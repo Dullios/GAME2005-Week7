@@ -59,7 +59,7 @@ void Ship::m_checkState()
 
 void Ship::update()
 {
-	move();
+	//move();
 }
 
 void Ship::clean()

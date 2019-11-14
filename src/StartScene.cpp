@@ -6,6 +6,10 @@
 #include "TileComparators.h"
 #include <iomanip>
 
+/*
+	Modified by: Russell Brabers - 101192571
+*/
+
 StartScene::StartScene()
 {
 	StartScene::start();
@@ -20,7 +24,13 @@ void StartScene::draw()
 	/*m_pStartLabel->draw();
 	m_pInstructionsLabel->draw();*/
 
-	m_pShip->draw();
+	SDL_SetRenderDrawColor(TheGame::Instance()->getRenderer(), 124.0f, 252.0f, 0.0f, 255.0f);
+	SDL_RenderDrawRect(TheGame::Instance()->getRenderer(), m_ground);
+	SDL_RenderFillRect(TheGame::Instance()->getRenderer(), m_ground);
+
+	m_pGrenade->draw();
+	m_pWookie->draw();
+	m_pTroopers->draw();
 
 	// ImGui Rendering section - DO NOT MOVE OR DELETE
 	if (m_displayUI)
@@ -33,6 +43,12 @@ void StartScene::draw()
 
 void StartScene::update()
 {
+	if(m_isGravityEnabled)
+		m_Move();
+	m_pGrenade->update();
+
+	m_pTroopers->setPosition(glm::vec2(m_pWookie->getPosition().x + ((m_range / 10) * m_PPM), m_pTroopers->getPosition().y));
+
 	if (m_displayUI)
 	{
 		m_updateUI();
@@ -44,7 +60,9 @@ void StartScene::clean()
 	/*delete m_pStartLabel;
 	delete m_pInstructionsLabel;*/
 
-	delete m_pShip;
+	delete m_pWookie;
+	delete m_pGrenade;
+	delete m_pTroopers;
 
 	removeAllChildren();
 }
@@ -165,9 +183,25 @@ void StartScene::start()
 	m_pInstructionsLabel->setParent(this);
 	addChild(m_pInstructionsLabel)*/
 
-	m_pShip = new Ship();
-	m_pShip->setPosition(glm::vec2(400.0f, 300.0f));
-	addChild(m_pShip);
+	m_position = glm::vec2(50.0f, 50.0f);
+
+	m_pWookie = new Wookie();
+	m_pWookie->setPosition(glm::vec2(100.0f, 450.0f));
+	addChild(m_pWookie);
+
+	m_pGrenade = new Grenade();
+	m_pGrenade->setPosition(glm::vec2(100.0f, 499.0f));
+	addChild(m_pGrenade);
+
+	m_pTroopers = new Troopers();
+	m_pTroopers->setPosition(glm::vec2(650.0f, 450.f));
+	addChild(m_pTroopers);
+
+	m_ground = new SDL_Rect();
+	m_ground->x = 20;
+	m_ground->y = 505;
+	m_ground->w = 1440;
+	m_ground->h = 45;
 }
 
 void StartScene::m_ImGuiKeyMap()
@@ -250,7 +284,7 @@ void StartScene::m_updateUI()
 	ImGui::NewFrame();
 	//ImGui::ShowDemoWindow(); // use for debug purposes
 
-	std::string windowString = "Settings ";
+	std::string windowString = "Physics Settings ";
 
 	ImGui::Begin(&windowString[0], NULL, ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_MenuBar);
 
@@ -286,213 +320,114 @@ void StartScene::m_updateUI()
 
 	if (m_displayAbout)
 	{
-		ImGui::Begin("About Pathfinding Simulator", &m_displayAbout, ImGuiWindowFlags_AlwaysAutoResize);
+		ImGui::Begin("About Physics...", &m_displayAbout, ImGuiWindowFlags_AlwaysAutoResize);
 		ImGui::Separator();
 		ImGui::Text("Authors:");
-		ImGui::Text("Tom Tsiliopoulos ");
+		ImGui::Text("Russell Brabers ");
 		ImGui::End();
 	}
 
 	/*************************************************************************************************/
-	if (ImGui::Button("Respawn Ships"))
+	if (ImGui::Button("Fire"))
 	{
-		/*m_respawnShips();
-		m_moveAlongPath = false;*/
+		m_isGravityEnabled = (m_isGravityEnabled) ? false : true;
 	}
-
 	ImGui::SameLine();
-
-	if (ImGui::Button("Respawn Planet"))
+	if (ImGui::Button("Reset"))
 	{
-		/*m_respawnPlanet();
-		m_moveAlongPath = false;*/
-	}
+		m_isGravityEnabled = false;
+		m_pGrenade->setPosition(glm::vec2(100.0f, 499.0f));
+		m_gravity = 9.8f;
+		m_PPM = 10.0f;
+		m_aTime = 0.016667f;
+		m_angle = 14.67f;
+		m_range = 500.0f;
 
+		m_velocity = 100.0f;
+		m_velocityX = 0.0f;
+		m_velocityY = 0.0f;
+
+		m_hasLanded = false;
+		m_hasBackWind = false;
+	}
 	ImGui::SameLine();
+	ImGui::Checkbox("Wind Force", &m_hasBackWind);
 
-	if (ImGui::Button("Respawn Mines"))
+	ImGui::PushItemWidth(120);
+	if (ImGui::SliderFloat("Gravity", &m_gravity, 0.1f, 30.0f, "%.1f"))
 	{
-		/*m_respawnMines();
-		m_moveAlongPath = false;*/
+		
+	}
+	
+	if (ImGui::SliderFloat("Pixels Per Meter", &m_PPM, 1.0f, 30.0f, "%.1f"))
+	{
+
 	}
 
-	ImGui::SameLine();
-
-	if (ImGui::Button("Toggle Grid"))
+	if (ImGui::SliderFloat("Angle", &m_angle, 0.0f, 90.0f, "%.1f"))
 	{
-		//m_debugMode = (m_debugMode) ? false : true;
+
 	}
 
-	ImGui::SameLine();
-
-	if (ImGui::Button("Reset All"))
+	if (ImGui::SliderFloat("Velocity", &m_velocity, 0.0f, 200.0f, "%.1f"))
 	{
-		//m_resetAll();
+
 	}
 
-	ImGui::PushItemWidth(80);
-	/*if (ImGui::SliderFloat("Manhattan Factor", m_grid[0][0]->getManhanttanFactor(), 0.1f, 10.0f, "%.1f"))
+	if (ImGui::SliderFloat("Range", &m_range, 0.0f, 1200.0f, "%.1f"))
 	{
-		float newFactor = *m_grid[0][0]->getManhanttanFactor();
 
-		for (size_t row = 0; row < m_rowSize; row++)
-		{
-			for (size_t col = 0; col < m_colSize; col++)
-			{
-				m_grid[col][row]->setManhanttanFactor(newFactor);
-			}
-		}
-	}*/
-
-	ImGui::SameLine();
-
-	/*if (ImGui::SliderFloat("Euclidean Factor", m_grid[0][0]->getEuclideanFactor(), 0.1f, 10.0f, "%.1f"))
-	{
-		float newFactor = *m_grid[0][0]->getEuclideanFactor();
-
-		for (size_t row = 0; row < m_rowSize; row++)
-		{
-			for (size_t col = 0; col < m_colSize; col++)
-			{
-				m_grid[col][row]->setEuclideanFactor(newFactor);
-			}
-		}
-	}*/
-
-	ImGui::SameLine();
-
-	/*if (ImGui::SliderFloat("Mine Factor", m_grid[0][0]->getMineFactor(), 0.1f, 10.0f, "%.1f"))
-	{
-		float newFactor = *m_grid[0][0]->getMineFactor();
-
-		for (size_t row = 0; row < m_rowSize; row++)
-		{
-			for (size_t col = 0; col < m_colSize; col++)
-			{
-				m_grid[col][row]->setMineFactor(newFactor);
-			}
-		}
-	}*/
-	ImGui::PopItemWidth();
-
-	if (ImGui::CollapsingHeader("Ship Locations"))
-	{
-		/*ImGui::PushItemWidth(80);
-		int count = 0;
-
-		std::string shipText;
-		shipText = "Ship " + count;
-		shipText += " Position: ";
-		ImGui::Text(shipText.c_str());
-		ImGui::SameLine();
-		glm::vec2 pos = m_ship.getPosition();
-		ImGui::InputFloat2("", &pos[0], 0, ImGuiInputTextFlags_ReadOnly);
-		count++;
-		ImGui::PopItemWidth();*/
-	}
-
-	if (ImGui::CollapsingHeader("Planet Location"))
-	{
-		/*ImGui::PushItemWidth(80);
-		std::string planetText;
-		planetText = "Planet Position: ";
-		ImGui::Text(planetText.c_str());
-		ImGui::SameLine();
-		glm::vec2 pos = m_planet.getPosition();
-		ImGui::InputFloat2("", &pos[0], 0, ImGuiInputTextFlags_ReadOnly);
-		ImGui::PopItemWidth();*/
-	}
-
-	if (ImGui::CollapsingHeader("Mine Locations"))
-	{
-		/*ImGui::PushItemWidth(80);
-		int count = 0;
-		for (Mine mine : m_pMines)
-		{
-			std::string mineText;
-			mineText = "Mine " + count;
-			mineText += " Position: ";
-			ImGui::Text(mineText.c_str());
-			ImGui::SameLine();
-			glm::vec2 pos = mine.getPosition();
-			ImGui::InputFloat2("", &pos[0], 0, ImGuiInputTextFlags_ReadOnly);
-			count++;
-		}
-		ImGui::PopItemWidth();*/
 	}
 
 	ImGui::Separator();
 
-	ImGui::PushItemWidth(80);
-	/*glm::vec2 targetPosition = getTargetPosition();
-	if (ImGui::SliderFloat("Target X Position", &targetPosition.x, 0.0f, 800.0f, "%.0f"))
+	if (ImGui::CollapsingHeader("Thermal Detonator Values"))
 	{
-		setTargetPosition(targetPosition);
-	}
-	ImGui::SameLine();
-	if (ImGui::SliderFloat("Target Y Position", &targetPosition.y, 0.0f, 600.0f, "%.0f"))
-	{
-		setTargetPosition(targetPosition);
-	}*/
-	ImGui::PopItemWidth();
+		ImGui::PushItemWidth(100);
+		
+		float mass = 3.2f; 
+		float velocityFinal = m_velocity;
+		float time = (2 * velocityFinal * sin(m_angle * deg2rad)) / m_gravity;
+		float acceleration = velocityFinal / time;
+		float force = mass * acceleration;
+		float forceX = force * cos(m_angle * deg2rad);
 
-	ImGui::Separator();
-
-	if (ImGui::Button("Find Path"))
-	{
-		//std::cout << "**** NEW PATH ****" << std::endl;
-
-		/*findShortestPath();
-		m_moveAlongPath = false;*/
-	}
-
-	if (ImGui::CollapsingHeader("Open Tiles"))
-	{
-		/*ImGui::PushItemWidth(80);
-		int count = 0;
-		for (Tile* tile : m_pOpen)
+		if (m_hasBackWind)
 		{
-			std::string tileText;
-			tileText = "Tile ";
-			tileText += std::to_string(count);
-			tileText += " Position: ";
-			ImGui::Text(tileText.c_str());
-			ImGui::SameLine();
-			glm::vec2 pos = tile->getPosition();
-			ImGui::InputFloat2("", &pos[0], 0, ImGuiInputTextFlags_ReadOnly);
-			count++;
+			forceX += 0.4;
+			force = forceX / cos(m_angle * deg2rad);
+			acceleration = force / mass;
+			velocityFinal = acceleration * time;
 		}
-		ImGui::PopItemWidth();*/
+
+		ImGui::Text("Mass: %0.2fkg", mass);
+		ImGui::Text("Velocity: %0.2fm/s", velocityFinal);
+		ImGui::Text("Time: %0.2fs", time);
+		ImGui::Text("Acceleration: %0.2fm/s^2", acceleration);
+		ImGui::Text("Force: %0.2fN", force);
+		ImGui::Text("Force(x): %0.2fN", forceX);
+		ImGui::SameLine();
+		ImGui::Text("Force(y): %0.2fN", force * sin(m_angle * deg2rad));
+
+		ImGui::PopItemWidth();
 	}
 
-	if (ImGui::CollapsingHeader("Closed Tiles"))
-	{
-		/*ImGui::PushItemWidth(80);
-		int count = 0;
-		for (Tile* tile : m_pClosed)
-		{
-			std::string tileText;
-			tileText = "Tile ";
-			tileText += std::to_string(count);
-			tileText += " Position: ";
-			ImGui::Text(tileText.c_str());
-			ImGui::SameLine();
-			glm::vec2 pos = tile->getPosition();
-			ImGui::InputFloat2("", &pos[0], 0, ImGuiInputTextFlags_ReadOnly);
-			count++;
-		}
-		ImGui::PopItemWidth();*/
-	}
-
-	/*if (!m_pOpen.empty())
-	{
-		if (ImGui::Button("Move Ship Along Path"))
-		{
-			m_moveAlongPath = true;
-			m_pathLength = 0;
-		}
-	}*/
-
-	// Main Window End
 	ImGui::End();
+}
+
+void StartScene::m_Move()
+{
+	m_velocityX = (m_velocity * m_PPM) * cos(m_angle * deg2rad);
+	m_velocityY = (m_velocity * m_PPM) * -sin(m_angle * deg2rad);
+
+	m_acceleration = glm::vec2(0.0f, m_gravity) * m_PPM;
+	m_position = m_pGrenade->getPosition() + (glm::vec2(m_velocityX, m_velocityY) * m_time) + ((0.5f * m_acceleration) * (m_aTime * m_aTime));
+
+	if (!m_hasLanded)
+	{
+		m_aTime += m_time;
+		m_pGrenade->setPosition(m_position);
+	}
+	if (m_pGrenade->getPosition().y >= 500.0f)
+		m_hasLanded = true;
 }

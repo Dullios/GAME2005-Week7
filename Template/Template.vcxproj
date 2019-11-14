@@ -24,6 +24,7 @@
     <Keyword>Win32Proj</Keyword>
     <RootNamespace>Template</RootNamespace>
     <WindowsTargetPlatformVersion>10.0.17763.0</WindowsTargetPlatformVersion>
+    <ProjectName>Brabers_Russell_Assignment2</ProjectName>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
@@ -167,6 +168,7 @@
     <ClCompile Include="..\src\FontManager.cpp" />
     <ClCompile Include="..\src\Game.cpp" />
     <ClCompile Include="..\src\GameObject.cpp" />
+    <ClCompile Include="..\src\Grenade.cpp" />
     <ClCompile Include="..\src\Label.cpp" />
     <ClCompile Include="..\src\main.cpp" />
     <ClCompile Include="..\src\Mine.cpp" />
@@ -179,7 +181,9 @@
     <ClCompile Include="..\src\Target.cpp" />
     <ClCompile Include="..\src\TextureManager.cpp" />
     <ClCompile Include="..\src\Tile.cpp" />
+    <ClCompile Include="..\src\Troopers.cpp" />
     <ClCompile Include="..\src\Util.cpp" />
+    <ClCompile Include="..\src\Wookie.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\include\IMGUI\imconfig.h" />
@@ -196,6 +200,7 @@
     <ClInclude Include="..\src\FontManager.h" />
     <ClInclude Include="..\src\Game.h" />
     <ClInclude Include="..\src\GameObject.h" />
+    <ClInclude Include="..\src\Grenade.h" />
     <ClInclude Include="..\src\Label.h" />
     <ClInclude Include="..\src\Mine.h" />
     <ClInclude Include="..\src\Planet.h" />
@@ -208,7 +213,9 @@
     <ClInclude Include="..\src\TextureManager.h" />
     <ClInclude Include="..\src\Tile.h" />
     <ClInclude Include="..\src\TileComparators.h" />
+    <ClInclude Include="..\src\Troopers.h" />
     <ClInclude Include="..\src\Util.h" />
+    <ClInclude Include="..\src\Wookie.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
